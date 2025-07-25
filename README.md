@@ -1,139 +1,165 @@
-# PDF Outline Extractor 📖
+# PDF Outline Extractor - Team - TechnoidX
 
-A blazing-fast PDF processing solution developed for **Adobe India Hackathon 2025 - Challenge 1a**. It extracts structured data including the **document title** and **table of contents (outline)** from PDFs and outputs JSON files. Fully containerized, offline-compatible, and optimized under strict performance constraints.
+A blazing-fast, robust PDF outline extractor built for **Adobe India Hackathon 2025 - Challenge 1a**. This solution extracts a clean and structured **document title** and **table of contents (outline)** including H1, H2, and H3 headings from PDF files and outputs JSON files — ready for downstream tasks like semantic search and intelligent summarization.
 
 ---
 
-## 🔍 Approach
+## 🔍 What This Does
 
-This solution processes all PDFs in the `/input` directory and generates corresponding structured `.json` files in the `/output` directory. It extracts:
+This script processes all PDFs in the `/input` directory and extracts:
+
 - The **document title**
-- A hierarchical **outline** (table of contents/bookmarks), including:
+- A hierarchical **outline**:
   - `text`: heading text
-  - `level`: outline depth (hierarchy)
-  - `page`: page number where the section starts
+  - `level`: heading level (H1, H2, H3)
+  - `page`: page number (1-indexed)
 
-It uses PyMuPDF to access internal PDF metadata and outline structure, then formats the extracted data to match a predefined schema.
-
-**Key Features:**
-- Processes multiple PDFs in one go
-- Skips files without outlines
-- Fully offline and Dockerized
-- Meets all resource constraints:
-  - ≤200MB model size (no ML models used)
-  - ≤10 seconds for a 50-page PDF
-  - CPU-only execution
-  - ≤16GB RAM
+It outputs a corresponding `.json` for each input PDF in the `/output` directory, conforming to the required schema.
 
 ---
 
-## 📚 Models and Libraries Used
+## 🚀 Approach
 
-This solution **does not use any heavy ML model**. It is built using the following Python library:
-
-- [`PyMuPDF`](https://pymupdf.readthedocs.io/en/latest/) (`fitz`) – For parsing PDF metadata and outlines
-
-Install dependencies using:
-
-```bash
-pip install -r requirements.txt
-```
-
-**Dependencies (from `requirements.txt`):**
-
-```
-PyMuPDF==1.22.3
-```
+- Uses `pdfplumber` to extract individual characters with layout, font, size, and position.
+- **Heading levels** are inferred using:
+  - Font size buckets (relative font size logic)
+  - Boldness from font name (e.g., contains 'Bold', 'Heavy')
+  - Position-based heuristics (e.g., top 25% of page)
+- **Title detection** logic uses the first H1 candidate that is:
+  - On page 1
+  - Within top 25% of the page height
+  - Center-aligned text
+- Cleans noisy OCR patterns like headers/footers, timestamps, and page numbers.
+- Multilingual-safe via Unicode normalization.
+- JSON output strictly follows the schema provided.
 
 ---
 
-## ⚙️ How to Build and Run the Solution
-
-> This section is for documentation only. The evaluation process uses the “Expected Execution” procedure.
-
-### 📁 Folder Structure
+## 📁 Folder Structure
 
 ```
-Challenge_1a/
 ├── Dockerfile
 ├── README.md
 ├── requirements.txt
-├── process_pdfs.py         # Entry point script
-├── parser.py               # Core PDF parsing logic
-├── json_generator.py       # (Optional) Test PDF generator
-├── output_schema.json      # JSON schema definition
-├── input/                  # Input folder (place PDFs here)
-└── output/                 # Output folder (results saved here)
+├── process_pdfs.py
+├── parser.py
+├── json_generator.py
+├── input/
+│   └── *.pdf
+├── output/
+│   └── *.json
+├── output_schema.json
 ```
-
-### 🐳 Build Docker Image
-
-```bash
-docker build -t pdf-processor .
-```
-
-### 🐳 Run the Container
-
-```bash
-docker run --rm \
-  -v $(pwd)/input:/app/input:ro \
-  -v $(pwd)/output:/app/output \
-  --network none \
-  pdf-processor
-```
-
-- `input/`: place your input PDF files here.
-- `output/`: will contain extracted JSON outputs.
-- `--network none`: ensures full offline compliance.
 
 ---
 
-## 🧪 Output Format
-
-Each output `.json` file conforms to this schema:
+## 📊 Output Format
 
 ```json
 {
   "title": "Document Title",
   "outline": [
-    {
-      "level": "1",
-      "text": "Chapter 1",
-      "page": 1
-    },
-    {
-      "level": "2",
-      "text": "Section 1.1",
-      "page": 2
-    }
+    { "level": "H1", "text": "Chapter 1", "page": 1 },
+    { "level": "H2", "text": "Section 1.1", "page": 2 },
+    { "level": "H3", "text": "Subsection 1.1.1", "page": 2 }
   ]
 }
 ```
 
-You can validate this structure using the provided `output_schema.json`.
-
 ---
 
-## ✅ Optional: Testing With Sample PDF
+## ⚙️ Build and Run
 
-To test the system with a sample input:
+### 🔨 Step 1: Build Docker Image
 
 ```bash
-python json_generator.py
+docker build -t adobe-challenge-1a .
 ```
 
-This generates a sample PDF (e.g., `outlined_50_pages.pdf`) with a mock table of contents inside the `input/` folder.
+### 🚀 Step 2: Run the Container
+
+```bash
+docker run --rm \
+  -v "$(pwd)/input:/app/input" \
+  -v "$(pwd)/output:/app/output" \
+  --network none \
+  adobe-challenge-1a
+```
+
+This will process all PDFs in `/input` and save `.json` outputs to `/output`.
 
 ---
 
-## 🙏 Acknowledgements
+## 🎓 Local Development (Optional)
 
-- Adobe India Hackathon Team
-- [PyMuPDF](https://pymupdf.readthedocs.io/en/latest/)
+Install dependencies locally using:
+
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
-## 👨‍💻 Author
+## 🧩 Requirements
 
-**Raman Kumar**  
-GitHub: [@Raman0101](https://github.com/Raman0101)
+**requirements.txt**
+```
+pdfplumber
+```
+
+---
+
+## ✨ Highlights
+
+- ✅ Accurate heading detection using font size & style heuristics
+- ✅ Multilingual-safe via Unicode normalization (e.g., CJK, Devanagari)
+- ✅ Filters OCR noise, headers, footers, and spurious lines
+- ✅ Supports both CLI & Docker use cases
+- ✅ Follows schema strictly and handles multiple PDFs in batch
+- ✅ Optimized for CPU-only processing
+
+---
+
+## 🚫 Known Limitations
+
+- Purely scanned/image PDFs (without embedded text) are not supported
+- Multi-column layouts are flattened into a linear reading order
+- Not all fonts/styles are handled exhaustively — edge cases may require tuning
+
+---
+
+## 💪 Bonus-Readiness (For Challenge 1B)
+
+- Extracted structure is cleanly nested and modular
+- Unicode-safe, language-agnostic logic
+- Easily extendable for persona-based content filtering
+
+---
+
+## 📖 Example Output
+
+From a PDF titled **South of France - Cities**:
+
+```json
+{
+  "title": "South of France - Cities",
+  "outline": [
+    { "level": "H1", "text": "Nice", "page": 1 },
+    { "level": "H2", "text": "Promenade des Anglais", "page": 2 },
+    { "level": "H1", "text": "Avignon", "page": 3 }
+  ]
+}
+```
+
+---
+
+## 👨‍💼 Author
+
+- **Raman Kumar**  
+  GitHub: [@Raman0101](https://github.com/Raman0101)
+
+- **Ram Samujh Singh**  
+  GitHub: [@Ramsamujhsingh70](https://github.com/Ramsamujhsingh70)
+
+- **Raman Kumar**  
+  GitHub: [@dubeyrishabh123](https://github.com/dubeyrishabh123)
